@@ -6,8 +6,8 @@ from datetime import datetime, timezone, timedelta
 def main():
     # 1) 認証情報を dict としてロード
     creds_dict = json.loads(os.environ['GSPREAD_JSON'])
-    # creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-    # gc = gspread.service_account_from_dict(creds_dict)
+    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    gc = gspread.service_account_from_dict(creds_dict)
 
 
     # # 2) シートを開く
