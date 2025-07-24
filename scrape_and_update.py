@@ -5,6 +5,13 @@ import gspread
 from datetime import datetime, timezone, timedelta
 import re
 
+os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
+os.environ["LOGIN_USER"] = "t.kawagoe"
+os.environ["LOGIN_PASS"] = "t.kawagoe"
+os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
+os.environ["web_base"] = "https://reo-system.com/"
+
+
 def login_and_get_session():
     session = requests.Session()
 
@@ -49,8 +56,23 @@ def login_and_get_session():
 
 
 def reoB(session):
-    # (6) データ取得
-    reoB = session.get(os.environ['reoB'])
+    # 該当のreoB URLを取得
+    top = session.get(os.environ['LOGIN_SUCCESS_URL'])
+    top.raise_for_status()
+    soup = BeautifulSoup(top.text, 'html.parser')
+
+    # CSS セレクタで直接 a タグを取得
+    a_tag = soup.select_one('.conditioning_input_status .conditioning_report_on a')
+    if a_tag and a_tag.has_attr('href'):
+        href = a_tag['href']
+        href_reoB = os.environ["web_base"] + href
+        print(href_reoB)  # => /pcm/conditioning_report/4667?transaction_status=900
+    else:
+        print("リンクが見つかりませんでした")
+        return
+
+    # reoBへ移動
+    reoB = session.get(href_reoB)
     reoB.raise_for_status()
     soup = BeautifulSoup(reoB.text, 'html.parser')
 
