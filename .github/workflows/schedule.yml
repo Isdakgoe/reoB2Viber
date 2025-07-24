@@ -29,6 +29,12 @@ jobs:
         env:
           GSPREAD_JSON: ${{ secrets.GSPREAD_JSON }}
           SHEET_ID:     ${{ secrets.SHEET_ID }}
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}
+          LOGIN_USER: ${{ secrets.LOGIN_USER }}
+          LOGIN_PASS: ${{ secrets.LOGIN_PASS }}
+          LOGIN_SUCCESS_URL: ${{ secrets.LOGIN_SUCCESS_URL }}
+          WEB_BASE: ${{ secrets.WEB_BASE }}
+
         run: |
           python scrape_and_update.py
 
