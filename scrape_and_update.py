@@ -66,7 +66,7 @@ def reoB(session):
     if a_tag and a_tag.has_attr('href'):
         href = a_tag['href']
         href_No = href.split("?")[0].split("/")[-1]
-        href_reoB = os.environ["web_base"] + href
+        href_reoB = os.environ["WEB_BASE"] + href + "?category=status&transaction_status=900"
         print(href_reoB)  # => /pcm/conditioning_report/4667?transaction_status=900
     else:
         print("リンクが見つかりませんでした")
