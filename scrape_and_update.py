@@ -13,7 +13,7 @@ def main():
     sheet_id = os.environ['SHEET_ID']
     ws = gc.open_by_key(sheet_id).sheet1
 
-    ws.append_rows(["1", "2"])
+    ws.append_rows([["1", "2"]])
     print(f"Appended {len(to_append)} new rows.")
 
     # # 3) 既存 URL を取得 (列2 をキーに)
