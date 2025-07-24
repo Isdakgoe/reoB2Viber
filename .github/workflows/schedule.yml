@@ -31,3 +31,10 @@ jobs:
           SHEET_ID:     ${{ secrets.SHEET_ID }}
         run: |
           python scrape_and_update.py
+
+      - name: Dump secret snippet
+        run: |
+          echo "----BEGIN PRIVATE_KEY SNIPPET----"
+          echo "${{ secrets.GSPREAD_JSON }}" | head -n5
+          echo "----END SNIPPET----"
+
