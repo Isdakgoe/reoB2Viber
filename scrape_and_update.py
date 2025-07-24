@@ -5,11 +5,11 @@ import gspread
 from datetime import datetime, timezone, timedelta
 import re
 
-os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
-os.environ["LOGIN_USER"] = "t.kawagoe"
-os.environ["LOGIN_PASS"] = "t.kawagoe"
-os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
-os.environ["web_base"] = "https://reo-system.com/"
+# os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
+# os.environ["LOGIN_USER"] = "t.kawagoe"
+# os.environ["LOGIN_PASS"] = "t.kawagoe"
+# os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
+# os.environ["WEB_BASE"] = "https://reo-system.com/"
 
 
 def login_and_get_session():
@@ -65,6 +65,7 @@ def reoB(session):
     a_tag = soup.select_one('.conditioning_input_status .conditioning_report_on a')
     if a_tag and a_tag.has_attr('href'):
         href = a_tag['href']
+        href_No = href.split("?")[0].split("/")[-1]
         href_reoB = os.environ["web_base"] + href
         print(href_reoB)  # => /pcm/conditioning_report/4667?transaction_status=900
     else:
@@ -77,8 +78,9 @@ def reoB(session):
     soup = BeautifulSoup(reoB.text, 'html.parser')
 
     # 日付取得
-    date_info = soup.find("h1").text.split("/")
-    m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in date_info[1:]]
+    date_info = soup.find("h1")
+    ymd = date_info.split("(")[1].split("分")[0]
+    m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in date_info.text.split("/")[1:]]
     pattern = re.compile(rf'{m}/{d}|{m}月{d}日')
 
     # (7) 対象のテーブルを取得（class="list sticky"）
@@ -99,7 +101,7 @@ def reoB(session):
         row_data[7] = row_data[7].replace("\n\t\t\t\t\t", "").replace("\n\t\t\t", "")
         if tr.find('span', class_='change_10'):
             row_data[4] = "*"
-
+        row_data = [ymd, href_No] + row_data
         results.append(row_data[:-1])
         print(row_data)
 
