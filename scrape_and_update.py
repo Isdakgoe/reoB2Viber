@@ -66,7 +66,6 @@ def reoB(session):
     if a_tag and a_tag.has_attr('href'):
         href = a_tag['href']    # => /pcm/conditioning_report/4667?transaction_status=900
         ymd = a_tag.text
-        y, m, d = ymd.split("/")
         href_No = href.split("?")[0].split("/")[-1]
     else:
         print("リンクが見つかりませんでした")
@@ -79,8 +78,7 @@ def reoB(session):
     soup = BeautifulSoup(reoB.text, 'html.parser')
 
     # 日付取得
-    # date_info = soup.find("h1")
-    # m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in date_info.text.split("/")[1:]]
+    m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in ymd.split("/")[1:]]
     pattern = re.compile(rf'{m}/{d}|{m}月{d}日')
 
     # (7) 対象のテーブルを取得（class="list sticky"）
@@ -95,7 +93,7 @@ def reoB(session):
         remarks = tds[-2].get_text(strip=True)
         if not pattern.search(remarks):
             continue
-
+                
         row_data = [v.text for v in tr.find_all("td")]
         row_data[1] = row_data[1].replace("\n", "")
         row_data[7] = row_data[7].replace("\n\t\t\t\t\t", "").replace("\n\t\t\t", "")
