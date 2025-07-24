@@ -5,15 +5,6 @@ import gspread
 from datetime import datetime, timezone, timedelta
 import re
 
-os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
-os.environ["LOGIN_USER"] = "t.kawagoe"
-os.environ["LOGIN_PASS"] = "t.kawagoe"
-os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
-os.environ["reoB"] = "https://reo-system.com/pcm/conditioning_report/4667?transaction_status=900"
-
-date_pattern = re.compile(r'[7７](?:[／/]|月)[2２][3３]日?')
-
-
 def login_and_get_session():
     session = requests.Session()
 
@@ -62,6 +53,9 @@ def reoB(session):
     reoB = session.get(os.environ['reoB'])
     reoB.raise_for_status()
     soup = BeautifulSoup(reoB.text, 'html.parser')
+
+    # 日付の取得
+    date_pattern = re.compile(r'[7７](?:[／/]|月)[2２][3３]日?')
 
     # (7) 対象のテーブルを取得（class="list sticky"）
     table = soup.find('table', class_='list sticky')
