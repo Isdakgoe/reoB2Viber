@@ -66,7 +66,8 @@ def reoB(session):
     # (7) 対象のテーブルを取得（class="list sticky"）
     table = soup.find('table', class_='list sticky')
     tbody = table.find('tbody')
-
+    
+    # データ取得
     results = []
     for tr in tbody.find_all('tr'):
         # 各セルのテキストをリスト化
@@ -76,10 +77,13 @@ def reoB(session):
             continue
 
         row_data = [v.text for v in tr.find_all("td")]
+        row_data[1] = row_data[1].replace("\n", "")
+        row_data[7] = row_data[7].replace("\n\t\t\t\t\t", "").replace("\n\t\t\t", "")
         if tr.find('span', class_='change_10'):
             row_data[4] = "*"
 
-        results.append(row_data)
+        results.append(row_data[-1])
+        print(row_data)
 
     return results
 
@@ -88,20 +92,17 @@ def main():
     # 認証付きセッションの取得
     session = login_and_get_session()
 
-    # スプレッドシートの呼び出し
-    creds_dict = json.loads(os.environ['GSPREAD_JSON'])
-    gc = gspread.service_account_from_dict(creds_dict)
-    ws = gc.open_by_key(os.environ['SHEET_ID']).sheet1
-
     # 取得
-    to_append = reoB(session)
-    if to_append:
-        ws.append_rows(to_append)
-        print(f"Appended {len(to_append)} new rows.")
-    else:
+    results = reoB(session)
+    if len(results) == 0:
         print("No new data to append.")
-
-
+    else:
+        # スプレッドシートの呼び出し
+        creds_dict = json.loads(os.environ['GSPREAD_JSON'])
+        gc = gspread.service_account_from_dict(creds_dict)
+        ws = gc.open_by_key(os.environ['SHEET_ID']).sheet1
+        ws.append_rows(results)
+        print(f"Appended {len(results)} new rows.")
 
 
 if __name__ == "__main__":
