@@ -6,9 +6,9 @@ from datetime import datetime, timezone, timedelta
 
 # 1) 認証設定
 json_key = os.environ['GSPREAD_JSON']
-# sheet_id = os.environ['SHEET_ID']
-# with open('/tmp/creds.json','w') as f:
-#     f.write(json_key)
+sheet_id = os.environ['SHEET_ID']
+with open('/tmp/creds.json','w') as f:
+    f.write(json_key)
 # creds = ServiceAccountCredentials.from_json_keyfile_name(
 #     '/tmp/creds.json',
 #     ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
