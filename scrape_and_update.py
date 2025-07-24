@@ -76,7 +76,7 @@ def reoB(session):
         if tr.find('span', class_='change_10'):
             row_data[4] = "*"
 
-        results.append(row_data[-1])
+        results.append(row_data[:-1])
         print(row_data)
 
     return results
