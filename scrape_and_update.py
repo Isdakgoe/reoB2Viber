@@ -64,23 +64,23 @@ def reoB(session):
     # CSS セレクタで直接 a タグを取得
     a_tag = soup.select_one('.conditioning_input_status .conditioning_report_on a')
     if a_tag and a_tag.has_attr('href'):
-        href = a_tag['href']
+        href = a_tag['href']    # => /pcm/conditioning_report/4667?transaction_status=900
         ymd = a_tag.text
+        y, m, d = ymd.split("/")
         href_No = href.split("?")[0].split("/")[-1]
-        href_reoB = os.environ["WEB_BASE"] + href + "?category=status&transaction_status=900"
-        print(href_reoB)  # => /pcm/conditioning_report/4667?transaction_status=900
     else:
         print("リンクが見つかりませんでした")
         return
 
     # reoBへ移動
+    href_reoB = os.environ["WEB_BASE"] + href + "?category=status&transaction_status=900"
     reoB = session.get(href_reoB)
     reoB.raise_for_status()
     soup = BeautifulSoup(reoB.text, 'html.parser')
 
     # 日付取得
-    date_info = soup.find("h1")
-    m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in date_info.text.split("/")[1:]]
+    # date_info = soup.find("h1")
+    # m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in date_info.text.split("/")[1:]]
     pattern = re.compile(rf'{m}/{d}|{m}月{d}日')
 
     # (7) 対象のテーブルを取得（class="list sticky"）
