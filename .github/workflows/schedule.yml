@@ -1,0 +1,31 @@
+name: Daily Scrape & Update
+
+on:
+  # スケジュール実行（毎朝 6:00 JST → UTC 前日21:00）
+  schedule:
+    - cron: '0 21 * * *'
+  # 手動実行ボタンも追加
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install requests beautifulsoup4 gspread oauth2client
+
+      - name: Run scrape script
+        env:
+          GSPREAD_JSON: ${{ secrets.GSPREAD_JSON }}
+          SHEET_ID:     ${{ secrets.SHEET_ID }}
+        run: |
+          python scrape_and_update.py
