@@ -1,48 +1,108 @@
+
 import os, json, requests
 from bs4 import BeautifulSoup
 import gspread
 from datetime import datetime, timezone, timedelta
+import re
+
+os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
+os.environ["LOGIN_USER"] = "t.kawagoe"
+os.environ["LOGIN_PASS"] = "t.kawagoe"
+os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
+os.environ["reoB"] = "https://reo-system.com/pcm/conditioning_report/4667?transaction_status=900"
+
+date_pattern = re.compile(r'[7７](?:[／/]|月)[2２][3３]日?')
+
+
+def login_and_get_session():
+    session = requests.Session()
+
+    # (1) ログインページ取得 → authenticity_token 抜き出し
+    login_page = session.get(os.environ['LOGIN_URL'])
+    login_page.raise_for_status()
+    soup = BeautifulSoup(login_page.text, 'html.parser')
+    auth_token = soup.select_one('input[name="authenticity_token"]')['value']
+
+    # (2) 認証情報
+    username = os.environ['LOGIN_USER']
+    password = os.environ['LOGIN_PASS']
+
+    # (3) ヘッダーを含めて POST
+    payload = {
+         'user[login]': username,
+         'user[password]': password,
+         'authenticity_token': auth_token,
+         'utf8': '✓',  # Rails form だと hidden で入ってることが多い
+         'commit': 'Log in',  # ボタンの value に合わせる
+         "user[remember_me]": "0",               # hidden フィールド
+    }
+    headers = {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': os.environ['LOGIN_URL']  # 直前に GET したページを Referer に
+    }
+    resp = session.post(os.environ['LOGIN_URL'], data=payload, headers=headers, allow_redirects=True)
+    resp.raise_for_status()
+
+    # (4) リダイレクト履歴と最終 URL を確認
+    print("Login response URL:", resp.url)
+    print("Redirect history:")
+    for h in resp.history:
+        print("  ", h.status_code, h.headers.get('Location'))
+
+    # (5) 成功判定の強化
+    expected_after_login = os.environ.get('LOGIN_SUCCESS_URL')
+    if expected_after_login and expected_after_login not in resp.url:
+        raise RuntimeError(f"Login succeeded (200) but did not land on expected page: {resp.url}")
+
+    return session
+
+
+def reoB(session):
+    # (6) データ取得
+    reoB = session.get(os.environ['reoB'])
+    reoB.raise_for_status()
+    soup = BeautifulSoup(reoB.text, 'html.parser')
+
+    # (7) 対象のテーブルを取得（class="list sticky"）
+    table = soup.find('table', class_='list sticky')
+    tbody = table.find('tbody')
+
+    results = []
+    for tr in tbody.find_all('tr'):
+        # 各セルのテキストをリスト化
+        tds = tr.find_all('td')
+        remarks = tds[-2].get_text(strip=True)
+        if not date_pattern.search(remarks):
+            continue
+
+        row_data = [v.text for v in tr.find_all("td")]
+        if tr.find('span', class_='change_10'):
+            row_data[4] = "*"
+
+        results.append(row_data)
+
+    return results
+
 
 def main():
-    # 1) 認証情報を dict としてロード
+    # 認証付きセッションの取得
+    session = login_and_get_session()
+
+    # スプレッドシートの呼び出し
     creds_dict = json.loads(os.environ['GSPREAD_JSON'])
-    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
     gc = gspread.service_account_from_dict(creds_dict)
+    ws = gc.open_by_key(os.environ['SHEET_ID']).sheet1
 
-    # 2) シートを開く
-    sheet_id = os.environ['SHEET_ID']
-    ws = gc.open_by_key(sheet_id).sheet1
+    # 取得
+    to_append = reoB(session)
+    if to_append:
+        ws.append_rows(to_append)
+        print(f"Appended {len(to_append)} new rows.")
+    else:
+        print("No new data to append.")
 
-    ws.append_rows([["1", "2"]])
-    print(f"Appended {len(to_append)} new rows.")
 
-    # # 3) 既存 URL を取得 (列2 をキーに)
-    # all_vals = ws.get_all_values()
-    # existing = {row[1] for row in all_vals if len(row) > 1}
 
-    # # 4) 実行日 (JST) 文字列
-    # now_utc = datetime.now(timezone.utc)
-    # run_date = (now_utc + timedelta(hours=9)).strftime('%Y/%m/%d')
-
-    # # 5) スクレイピング＋フィルタリング
-    # to_append = []
-    # for i in range(1, 31):
-    #     url = f'https://example.com/page/{i}'
-    #     r = requests.get(url, timeout=10)
-    #     r.raise_for_status()
-    #     soup = BeautifulSoup(r.text, 'html.parser')
-    #     if url in existing:
-    #         continue
-    #     title = soup.select_one('h1.title').get_text(strip=True)
-    #     date  = soup.select_one('time').get('datetime')
-    #     to_append.append([run_date, url, title, date])
-
-    # # 6) シートに追記
-    # if to_append:
-    #     ws.append_rows(to_append)
-    #     print(f"Appended {len(to_append)} new rows.")
-    # else:
-    #     print("No new data to append.")
 
 if __name__ == "__main__":
     main()
