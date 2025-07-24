@@ -54,20 +54,22 @@ def reoB(session):
     reoB.raise_for_status()
     soup = BeautifulSoup(reoB.text, 'html.parser')
 
-    # 日付の取得
-    date_pattern = re.compile(r'[7７](?:[／/]|月)[2２][3３]日?')
+    # 日付取得
+    date_info = soup.find("h1").text.split("/")
+    m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in date_info[1:]]
+    pattern = re.compile(rf'{m}/{d}|{m}月{d}日')
 
     # (7) 対象のテーブルを取得（class="list sticky"）
     table = soup.find('table', class_='list sticky')
     tbody = table.find('tbody')
-    
+
     # データ取得
     results = []
     for tr in tbody.find_all('tr'):
         # 各セルのテキストをリスト化
         tds = tr.find_all('td')
         remarks = tds[-2].get_text(strip=True)
-        if not date_pattern.search(remarks):
+        if not pattern.search(remarks):
             continue
 
         row_data = [v.text for v in tr.find_all("td")]
