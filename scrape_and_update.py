@@ -65,6 +65,7 @@ def reoB(session):
     a_tag = soup.select_one('.conditioning_input_status .conditioning_report_on a')
     if a_tag and a_tag.has_attr('href'):
         href = a_tag['href']
+        ymd = a_tag.text
         href_No = href.split("?")[0].split("/")[-1]
         href_reoB = os.environ["WEB_BASE"] + href + "?category=status&transaction_status=900"
         print(href_reoB)  # => /pcm/conditioning_report/4667?transaction_status=900
@@ -79,7 +80,6 @@ def reoB(session):
 
     # 日付取得
     date_info = soup.find("h1")
-    ymd = date_info.split("(")[1].split("分")[0]
     m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in date_info.text.split("/")[1:]]
     pattern = re.compile(rf'{m}/{d}|{m}月{d}日')
 
