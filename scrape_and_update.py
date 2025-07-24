@@ -13,8 +13,8 @@ creds = ServiceAccountCredentials.from_json_keyfile_name(
     '/tmp/creds.json',
     ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
 )
-gc = gspread.authorize(creds)
-ws = gc.open_by_key(sheet_id).sheet1
+# gc = gspread.authorize(creds)
+# ws = gc.open_by_key(sheet_id).sheet1
 
 # # 2) 既存 URL 取得 (列2)
 # all_vals = ws.get_all_values()
