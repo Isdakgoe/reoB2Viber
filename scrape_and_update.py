@@ -9,12 +9,12 @@ json_key = os.environ['GSPREAD_JSON']
 sheet_id = os.environ['SHEET_ID']
 with open('/tmp/creds.json','w') as f:
     f.write(json_key)
-# creds = ServiceAccountCredentials.from_json_keyfile_name(
-#     '/tmp/creds.json',
-#     ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
-# )
-# gc = gspread.authorize(creds)
-# ws = gc.open_by_key(sheet_id).sheet1
+creds = ServiceAccountCredentials.from_json_keyfile_name(
+    '/tmp/creds.json',
+    ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
+)
+gc = gspread.authorize(creds)
+ws = gc.open_by_key(sheet_id).sheet1
 
 # # 2) 既存 URL 取得 (列2)
 # all_vals = ws.get_all_values()
