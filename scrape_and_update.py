@@ -4,6 +4,7 @@ import gspread
 from datetime import datetime, timezone, timedelta
 import re
 import datetime
+import requests
 
 
 os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
@@ -11,6 +12,8 @@ os.environ["LOGIN_USER"] = "t.kawagoe"
 os.environ["LOGIN_PASS"] = "t.kawagoe"
 os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
 os.environ["WEB_BASE"] = "https://reo-system.com/"
+os.environ["VIBER_AUTH_TOKEN"] = "55100e787c3944db-f25c732dbf670093-5785efa67ab2b224"
+os.environ["VIBER_USER_ID"] = "eFRfZGOoL61kwaQjMC4eAQ=="
 
 
 def move2page(session, url):
@@ -143,6 +146,16 @@ def reoStatus(session, ymd_reo, href_number):
     return results
 
 
+def send_to_viber(message_text):
+    data = {
+        "auth_token": os.environ["VIBER_AUTH_TOKEN"],
+        "from": os.environ["VIBER_USER_ID"]",
+        "type": "text",
+        "text": message_text
+    }
+    res = requests.post("https://chatapi.viber.com/pa/post", json=data)
+    print(res.json())
+    
 def main():
     # 作動時刻
     DIFF_JST_FROM_UTC = 9
