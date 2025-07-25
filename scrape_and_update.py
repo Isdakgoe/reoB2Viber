@@ -4,7 +4,6 @@ import gspread
 from datetime import datetime, timezone, timedelta
 import re
 import datetime
-import pytz
 
 # os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
 # os.environ["LOGIN_USER"] = "t.kawagoe"
@@ -89,8 +88,11 @@ def reoB(session):
     # データ取得
     results = []
     for tr in tbody.find_all('tr'):
-        # 現在時刻
-        dt_now = datetime.datetime.now(pytz.timezone('Asia/Tokyo')).strftime('%Y/%m/%d %H:%M:%S')
+        # 現在時刻: TOKYO
+        # JSTとUTCの差分
+        DIFF_JST_FROM_UTC = 9
+        dt_now = datetime.datetime.utcnow() + datetime.timedelta(hours=DIFF_JST_FROM_UTC)
+        dt_now = dt_now.strftime('%Y/%m/%d %H:%M:%S')
 
     
         # 各セルのテキストをリスト化
