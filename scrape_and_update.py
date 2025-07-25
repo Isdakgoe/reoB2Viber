@@ -6,11 +6,11 @@ import re
 import datetime
 
 
-os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
-os.environ["LOGIN_USER"] = "t.kawagoe"
-os.environ["LOGIN_PASS"] = "t.kawagoe"
-os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
-os.environ["WEB_BASE"] = "https://reo-system.com/"
+# os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
+# os.environ["LOGIN_USER"] = "t.kawagoe"
+# os.environ["LOGIN_PASS"] = "t.kawagoe"
+# os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
+# os.environ["WEB_BASE"] = "https://reo-system.com/"
 
 
 def move2page(session, url):
@@ -170,9 +170,11 @@ def main():
 
             # データの登録
             ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("reoB")
-            # ws = gc.open_by_key(os.environ['SHEET_ID']).sheet1
             ws.append_rows(results)
-            print(f"Appended {len(results)} new rows.")
+            
+            # 記録の登録
+            ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
+            ws.append_rows([[dt_now, "reoB"]])
 
     except:
         print(f"    {dt_now}: ERROR")
