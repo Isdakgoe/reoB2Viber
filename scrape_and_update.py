@@ -195,9 +195,7 @@ def main():
             ERROR_MESSAGE[3] = res["status"]  
             ERROR_MESSAGE[4] = res["status_message"] 
 
-
     except:
-        RECORD_MESSAGE[1] = "X"
         print(f"    {dt_now}: ERROR")
 
     
