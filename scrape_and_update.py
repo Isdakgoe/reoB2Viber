@@ -149,7 +149,7 @@ def reoStatus(session, ymd_reo, href_number):
 def send_to_viber(message_text):
     data = {
         "auth_token": os.environ["VIBER_AUTH_TOKEN"],
-        "from": os.environ["VIBER_USER_ID"]",
+        "from": os.environ["VIBER_USER_ID"],
         "type": "text",
         "text": message_text
     }
