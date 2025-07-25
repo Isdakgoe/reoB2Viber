@@ -1,9 +1,9 @@
-
 import os, json, requests
 from bs4 import BeautifulSoup
 import gspread
 from datetime import datetime, timezone, timedelta
 import re
+import datetime
 
 # os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
 # os.environ["LOGIN_USER"] = "t.kawagoe"
@@ -77,17 +77,20 @@ def reoB(session):
     reoB.raise_for_status()
     soup = BeautifulSoup(reoB.text, 'html.parser')
 
-    # 日付取得
-    m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in ymd.split("/")[1:]]
-    pattern = re.compile(rf'{m}/{d}|{m}月{d}日')
-
     # (7) 対象のテーブルを取得（class="list sticky"）
     table = soup.find('table', class_='list sticky')
     tbody = table.find('tbody')
 
+    # 日付取得
+    m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in ymd.split("/")[1:]]
+    pattern = re.compile(rf'{m}/{d}|{m}月{d}日')
+
     # データ取得
     results = []
     for tr in tbody.find_all('tr'):
+        # 現在時刻
+        dt_now = datetime.datetime.now()
+    
         # 各セルのテキストをリスト化
         tds = tr.find_all('td')
         remarks = tds[-2].get_text(strip=True)
@@ -99,7 +102,7 @@ def reoB(session):
         row_data[7] = row_data[7].replace("\n\t\t\t\t\t", "").replace("\n\t\t\t", "")
         if tr.find('span', class_='change_10'):
             row_data[4] = "*"
-        row_data = [ymd, href_No] + row_data
+        row_data = [dt_now, ymd, href_No] + row_data
         results.append(row_data[:-1])
         print(row_data)
 
