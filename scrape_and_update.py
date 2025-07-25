@@ -6,11 +6,11 @@ import re
 import datetime
 
 
-# os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
-# os.environ["LOGIN_USER"] = "t.kawagoe"
-# os.environ["LOGIN_PASS"] = "t.kawagoe"
-# os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
-# os.environ["WEB_BASE"] = "https://reo-system.com/"
+os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
+os.environ["LOGIN_USER"] = "t.kawagoe"
+os.environ["LOGIN_PASS"] = "t.kawagoe"
+os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
+os.environ["WEB_BASE"] = "https://reo-system.com/"
 
 
 def move2page(session, url):
@@ -94,7 +94,7 @@ def reoB(session, ymd_reo, href_number):
         # SOAP
         temp = row_data[-3].split("\r\n")
         S, O, W = [temp[0], temp[-2] if len(temp) > 1 else "", temp[-1]]
-        
+
         # 出力
         row_data = [ymd_reo, href_number] + row_data + [S, O, W]
         results.append(row_data)
@@ -167,7 +167,10 @@ def main():
             # スプレッドシートの呼び出し
             creds_dict = json.loads(os.environ['GSPREAD_JSON'])
             gc = gspread.service_account_from_dict(creds_dict)
-            ws = gc.open_by_key(os.environ['SHEET_ID']).sheet1
+
+            # データの登録
+            ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("reoB")
+            # ws = gc.open_by_key(os.environ['SHEET_ID']).sheet1
             ws.append_rows(results)
             print(f"Appended {len(results)} new rows.")
 
