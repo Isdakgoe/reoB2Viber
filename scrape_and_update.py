@@ -190,6 +190,9 @@ def main():
             ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
             ws.append_rows([[dt_now, "reoB"]])
 
+            # viberに通知
+            send_to_viber(message_text="test")
+
     except:
         print(f"    {dt_now}: ERROR")
 
