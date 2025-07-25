@@ -6,11 +6,11 @@ import re
 import datetime
 
 
-# os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
-# os.environ["LOGIN_USER"] = "t.kawagoe"
-# os.environ["LOGIN_PASS"] = "t.kawagoe"
-# os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
-# os.environ["WEB_BASE"] = "https://reo-system.com/"
+os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
+os.environ["LOGIN_USER"] = "t.kawagoe"
+os.environ["LOGIN_PASS"] = "t.kawagoe"
+os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
+os.environ["WEB_BASE"] = "https://reo-system.com/"
 
 
 def move2page(session, url):
@@ -90,7 +90,8 @@ def reoB(session, ymd_reo, href_number):
         # データ取得
         row_data = [v.text for v in tr.find_all("td")]
         row_data[1] = row_data[1].replace("\n", "")
-
+        row_data[2] = "#" + row_data[2]
+        
         # SOAP
         temp = row_data[-3].split("\r\n")
         S, O, W = [temp[0], temp[-2] if len(temp) > 1 else "", temp[-1]]
@@ -171,7 +172,7 @@ def main():
             # データの登録
             ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("reoB")
             ws.append_rows(results)
-            
+
             # 記録の登録
             ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
             ws.append_rows([[dt_now, "reoB"]])
