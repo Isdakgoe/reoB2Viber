@@ -89,7 +89,8 @@ def reoB(session):
     results = []
     for tr in tbody.find_all('tr'):
         # 現在時刻
-        dt_now = datetime.datetime.now()
+        dt_now = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+
     
         # 各セルのテキストをリスト化
         tds = tr.find_all('td')
@@ -102,7 +103,7 @@ def reoB(session):
         row_data[7] = row_data[7].replace("\n\t\t\t\t\t", "").replace("\n\t\t\t", "")
         if tr.find('span', class_='change_10'):
             row_data[4] = "*"
-        row_data = [str(dt_now), ymd, href_No] + row_data
+        row_data = [dt_now, ymd, href_No] + row_data
         results.append(row_data[:-1])
         print(row_data)
 
