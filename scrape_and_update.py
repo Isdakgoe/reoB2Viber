@@ -155,6 +155,7 @@ def send_to_viber(message_text):
     }
     res = requests.post("https://chatapi.viber.com/pa/post", json=data)
     print(res.json())
+    return res
     
 def main():
     # 作動時刻
@@ -182,16 +183,16 @@ def main():
             creds_dict = json.loads(os.environ['GSPREAD_JSON'])
             gc = gspread.service_account_from_dict(creds_dict)
 
-            # データの登録
+            # スプレッドシートに登録
             ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("reoB")
             ws.append_rows(results)
 
+            # viberに通知
+            res = send_to_viber(message_text="test")
+
             # 記録の登録
             ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
-            ws.append_rows([[dt_now, "reoB"]])
-
-            # viberに通知
-            send_to_viber(message_text="test")
+            ws.append_rows([[dt_now, "reoB", res["status"], res["status_message"]]])
 
     except:
         print(f"    {dt_now}: ERROR")
