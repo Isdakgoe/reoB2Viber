@@ -6,11 +6,11 @@ import re
 import datetime
 
 
-os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
-os.environ["LOGIN_USER"] = "t.kawagoe"
-os.environ["LOGIN_PASS"] = "t.kawagoe"
-os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
-os.environ["WEB_BASE"] = "https://reo-system.com/"
+# os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
+# os.environ["LOGIN_USER"] = "t.kawagoe"
+# os.environ["LOGIN_PASS"] = "t.kawagoe"
+# os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
+# os.environ["WEB_BASE"] = "https://reo-system.com/"
 
 
 def move2page(session, url):
