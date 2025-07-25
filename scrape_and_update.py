@@ -165,6 +165,7 @@ def main():
 
     # start session
     session = requests.Session()
+    RECORD_MESSAGE = [dt_now, "-", "-", "-", "-"]
 
     try:
         # reo認証
@@ -175,9 +176,9 @@ def main():
 
         # reo: B
         results = reoB(session, ymd_reo, href_number)
-
         if len(results) == 0:
-            print("No new data to append.")
+            ERROR_MESSAGE[1] = "D" 
+            
         else:
             # スプレッドシートの呼び出し
             creds_dict = json.loads(os.environ['GSPREAD_JSON'])
@@ -186,17 +187,23 @@ def main():
             # スプレッドシートに登録
             ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("reoB")
             ws.append_rows(results)
+            ERROR_MESSAGE[1] = "O" 
 
             # viberに通知
             res = send_to_viber(message_text="test")
+            ERROR_MESSAGE[2] = "O" 
+            ERROR_MESSAGE[3] = res["status"]  
+            ERROR_MESSAGE[4] = res["status_message"] 
 
-            # 記録の登録
-            ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
-            ws.append_rows([[dt_now, "reoB", res["status"], res["status_message"]]])
 
     except:
+        RECORD_MESSAGE[1] = "X"
         print(f"    {dt_now}: ERROR")
 
+    
+    # 記録の登録
+    ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
+    ws.append_rows([RECORD_MESSAGE])
 
 if __name__ == "__main__":
     main()
