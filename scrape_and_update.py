@@ -6,11 +6,11 @@ import re
 import datetime
 
 
-# os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
-# os.environ["LOGIN_USER"] = "t.kawagoe"
-# os.environ["LOGIN_PASS"] = "t.kawagoe"
-# os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
-# os.environ["WEB_BASE"] = "https://reo-system.com/"
+os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
+os.environ["LOGIN_USER"] = "t.kawagoe"
+os.environ["LOGIN_PASS"] = "t.kawagoe"
+os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
+os.environ["WEB_BASE"] = "https://reo-system.com/"
 
 
 def move2page(session, url):
@@ -62,27 +62,51 @@ def go2condition(session):
     a_tag = soup.select_one('.conditioning_input_status .conditioning_report_on a')
     if a_tag and a_tag.has_attr('href'):
         ymd_reo = a_tag.text
-        href_No = a_tag['href'].split("?")[0].split("/")[-1]  # => /pcm/conditioning_report/4667?transaction_status=900
-        return [True, ymd_reo, href_No]
+        href_number = a_tag['href'].split("?")[0].split("/")[-1]  # => /pcm/conditioning_report/4667?transaction_status=900
+        return [True, ymd_reo, href_number]
     else:
         print("リンクが見つかりませんでした")
         return [False, "", ""]
 
 
-def reoB(session, ymd_reo, href_No):
+def reoB(session, ymd_reo, href_number):
     # reoBStatusへ移動
-    href_reoB = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_No}" + "?category=mt&transaction_status=900"
-    soup = session.get(session, href_reoB)
+    href_reoB = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=mt&transaction_status=900"
+    soup = move2page(session, href_reoB)
 
-    #
+    # table
+    table = soup.find('table', class_='list sticky')
+    tbody = table.find('tbody')
+
+    # データ取得
+    results = []
+    for tr in tbody.find_all('tr'):
+        # 各セルのテキストをリスト化
+        tds = tr.find_all('td')
+        remarks = tds[-3].get_text(strip=True)
+        if remarks == "":
+            continue
+
+        # データ取得
+        row_data = [v.text for v in tr.find_all("td")]
+        row_data[1] = row_data[1].replace("\n", "")
+
+        # SOAP
+        temp = row_data[-3].split("\r\n")
+        S, O, W = [temp[0], temp[-2] if len(temp) > 1 else "", temp[-1]]
+        
+        # 出力
+        row_data = [ymd_reo, href_number] + row_data + [S, O, W]
+        results.append(row_data)
+        print(row_data)
+
+    return results
 
 
-def reoStatus(session, ymd_reo, href_No):
+def reoStatus(session, ymd_reo, href_number):
     # reoBStatusへ移動
-    href_reoB = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_No}" + "?category=status&transaction_status=900"
-    reoB = session.get(href_reoB)
-    reoB.raise_for_status()
-    soup = BeautifulSoup(reoB.text, 'html.parser')
+    href_reoS = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=status&transaction_status=900"
+    soup = session.get(session, href_reoS)
 
     # table
     table = soup.find('table', class_='list sticky')
@@ -111,7 +135,7 @@ def reoStatus(session, ymd_reo, href_No):
         row_data[7] = row_data[7].replace("\n\t\t\t\t\t", "").replace("\n\t\t\t", "")
         if tr.find('span', class_='change_10'):
             row_data[4] = "*"
-        row_data = [dt_now, ymd_reo, href_No] + row_data
+        row_data = [dt_now, ymd_reo, href_number] + row_data
         results.append(row_data[:-1])
         print(row_data)
 
@@ -119,27 +143,36 @@ def reoStatus(session, ymd_reo, href_No):
 
 
 def main():
+    # 作動時刻
+    DIFF_JST_FROM_UTC = 9
+    dt_now = datetime.datetime.utcnow() + datetime.timedelta(hours=DIFF_JST_FROM_UTC)
+    dt_now = dt_now.strftime('%Y/%m/%d %H:%M:%S')
+
     # start session
     session = requests.Session()
 
-    # reo認証
-    session = login_and_get_session(session)
+    try:
+        # reo認証
+        session = login_and_get_session(session)
 
-    # コンディショニング欄へ
-    CHECK, ymd_reo, href_No = go2condition(session)
-    if not CHECK:
-        return
+        # コンディショニング欄へ
+        CHECK, ymd_reo, href_number = go2condition(session)
 
-    results = reoStatus(session, ymd_reo, href_No)
-    if len(results) == 0:
-        print("No new data to append.")
-    else:
-        # スプレッドシートの呼び出し
-        creds_dict = json.loads(os.environ['GSPREAD_JSON'])
-        gc = gspread.service_account_from_dict(creds_dict)
-        ws = gc.open_by_key(os.environ['SHEET_ID']).sheet1
-        ws.append_rows(results)
-        print(f"Appended {len(results)} new rows.")
+        # reo: B
+        results = reoB(session, ymd_reo, href_number)
+
+        if len(results) == 0:
+            print("No new data to append.")
+        else:
+            # スプレッドシートの呼び出し
+            creds_dict = json.loads(os.environ['GSPREAD_JSON'])
+            gc = gspread.service_account_from_dict(creds_dict)
+            ws = gc.open_by_key(os.environ['SHEET_ID']).sheet1
+            ws.append_rows(results)
+            print(f"Appended {len(results)} new rows.")
+
+    except:
+        print(f"    {dt_now}: ERROR")
 
 
 if __name__ == "__main__":
