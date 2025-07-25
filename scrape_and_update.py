@@ -6,7 +6,6 @@ import re
 import datetime
 import requests
 
-
 os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
 os.environ["LOGIN_USER"] = "t.kawagoe"
 os.environ["LOGIN_PASS"] = "t.kawagoe"
@@ -94,7 +93,7 @@ def reoB(session, ymd_reo, href_number):
         row_data = [v.text for v in tr.find_all("td")]
         row_data[1] = row_data[1].replace("\n", "")
         row_data[2] = "#" + row_data[2]
-        
+
         # SOAP
         temp = row_data[-3].split("\r\n")
         S, O, W = [temp[0], temp[-2] if len(temp) > 1 else "", temp[-1]]
@@ -155,8 +154,9 @@ def send_to_viber(message_text):
     }
     res = requests.post("https://chatapi.viber.com/pa/post", json=data)
     print(res.json())
-    return res
-    
+    return res.json()
+
+
 def main():
     # 作動時刻
     DIFF_JST_FROM_UTC = 9
@@ -165,7 +165,7 @@ def main():
 
     # start session
     session = requests.Session()
-    RECORD_MESSAGE = [dt_now, "-", "-", "-", "-"]
+    ERROR_MESSAGE = [dt_now, "-", "-", "-", "-"]
 
     try:
         # reo認証
@@ -177,8 +177,8 @@ def main():
         # reo: B
         results = reoB(session, ymd_reo, href_number)
         if len(results) == 0:
-            ERROR_MESSAGE[1] = "D" 
-            
+            ERROR_MESSAGE[1] = "D"
+
         else:
             # スプレッドシートの呼び出し
             creds_dict = json.loads(os.environ['GSPREAD_JSON'])
@@ -187,21 +187,21 @@ def main():
             # スプレッドシートに登録
             ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("reoB")
             ws.append_rows(results)
-            ERROR_MESSAGE[1] = "O" 
+            ERROR_MESSAGE[1] = "O"
 
             # viberに通知
             res = send_to_viber(message_text="test")
-            ERROR_MESSAGE[2] = "O" 
-            ERROR_MESSAGE[3] = res["status"]  
-            ERROR_MESSAGE[4] = res["status_message"] 
+            ERROR_MESSAGE[2] = "O"
+            ERROR_MESSAGE[3] = res["status"]
+            ERROR_MESSAGE[4] = res["status_message"]
 
     except:
         print(f"    {dt_now}: ERROR")
 
-    
     # 記録の登録
     ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
-    ws.append_rows([RECORD_MESSAGE])
+    ws.append_rows([ERROR_MESSAGE])
+
 
 if __name__ == "__main__":
     main()
