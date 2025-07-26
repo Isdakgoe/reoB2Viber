@@ -93,21 +93,21 @@ def reoB(session, ymd_reo, href_number):
         row_data = [v.text for v in tr.find_all("td")]
         row_data[0] = "#" + row_data[0]
         row_data[1] = row_data[1].replace("\n", "")
+        player = row_data[0] + row_data[1].split("\u3000")[0]
 
         # SOAP
         temp = row_data[-3].split("\r\n")
         S, O, W = [temp[0], temp[-2] if len(temp) > 1 else "", temp[-1]]
 
         # 出力
-        row_data = [ymd_reo, href_number] + row_data + [S, O, W]
+        row_data = [ymd_reo, href_number, player] + row_data + [S, O, W]
         results.append(row_data)
         print(len(row_data), row_data)
 
     # テキスト変換
-    text_viber_list = [(f"{v[2]} {v[3]} {v[5]}\n"
-                        f"  {v[12]}\n"
-                        f"  {v[13]}\n"
-                        f"  {v[14]}\n"
+    text_viber_list = [(f"{v[2]}  {v[6]}  {v[15]}\n"
+                        f"\s\s\s{v[13]}\n"
+                        f"\s\s\s\s{v[14]}\n"
                         ) for v in results]
     text_viber = ymd_reo + " B欄\n\n" + "\n\n".join(text_viber_list)
 
