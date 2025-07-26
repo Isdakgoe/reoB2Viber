@@ -8,18 +8,18 @@ import re
 import datetime
 import requests
 
-
-
-def move2page(session, url):
-    page = session.get(url)
-    page.raise_for_status()
-    soup = BeautifulSoup(page.text, 'html.parser')
-    return soup
+os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
+os.environ["LOGIN_USER"] = "t.kawagoe"
+os.environ["LOGIN_PASS"] = "t.kawagoe"
+os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
+os.environ["WEB_BASE"] = "https://reo-system.com/"
+os.environ["VIBER_AUTH_TOKEN"] = "55100e787c3944db-f25c732dbf670093-5785efa67ab2b224"
+os.environ["VIBER_USER_ID"] = "eFRfZGOoL61kwaQjMC4eAQ=="
 
 
 def login_and_get_session(session):
     # (1) ログインページ取得 → authenticity_token 抜き出し
-    soup = move2page(session, os.environ['LOGIN_URL'])
+    soup = _move2page(session, os.environ['LOGIN_URL'])
     auth_token = soup.select_one('input[name="authenticity_token"]')['value']
 
     # (3) ヘッダーを含めて POST
@@ -48,25 +48,28 @@ def login_and_get_session(session):
     if expected_after_login and expected_after_login not in resp.url:
         raise RuntimeError(f"Login succeeded (200) but did not land on expected page: {resp.url}")
 
-    return session
-
-
-def go2condition(session):
-    # 該当のreoB URLを取得
-    soup = move2page(session, os.environ['LOGIN_SUCCESS_URL'])
-
-    # CSS セレクタで直接 a タグを取得
+    # (６) REOへログイン
+    soup = _move2page(session, os.environ['LOGIN_SUCCESS_URL'])
     a_tag = soup.select_one('.conditioning_input_status .conditioning_report_on a')
     if a_tag and a_tag.has_attr('href'):
         ymd_reo = a_tag.text
         href_number = a_tag['href'].split("?")[0].split("/")[-1]  # => /pcm/conditioning_report/4667?transaction_status=900
-        return [ymd_reo, href_number]
+        return [session, ymd_reo, href_number]
     else:
-        print("リンクが見つかりませんでした")
-        return ["", ""]
+        return ["", "", ""]
 
 
-def reoB(df, ymd_reo):
+def _move2page(session, url):
+    page = session.get(url)
+    page.raise_for_status()
+    soup = BeautifulSoup(page.text, 'html.parser')
+    return soup
+
+
+def reoB(session, ymd_reo, href_number, category, remarks_col, remarks_value):
+    # get table
+    df = _reo_table_download(session, ymd_reo, href_number, category, remarks_col, remarks_value)
+    
     # SOAP
     temp = df.iloc[:, -3].str.split("\r\n")
     df["S"] = temp.str[0]
@@ -78,14 +81,33 @@ def reoB(df, ymd_reo):
     text1 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] == "投手"].values])
     text2 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] != "投手"].values])
     text = text0 + f"===== 投手 =====\n" + text1 + f"\n\n===== 野手 =====\n" + text2
-    
+
     # sheet
     results = [list(v) for v in df.values]
 
     return results, text
-    
 
-def reoStatus(session, ymd_reo, href_number):
+
+def reoC(session, ymd_reo, href_number, category, remarks_col, remarks_value):
+    # get table
+    df = _reo_table_download(session, ymd_reo, href_number, category, remarks_col, remarks_value)
+
+    # 体重および体重前日比
+    df["weight"] = df[9].str.split("\n").str[1].str.replace(" ", "").str[:-2].astype(float)
+    df["weight_comp"] = df[9].str.split("\n").str[3].str.replace(" ", "")
+
+    # viber
+    text0 = ymd_reo + " C欄 体重\n"
+    text1 = "\n".join([f"{v[2]}  {v[-2]:>5d}kg {v[-1]}\n" for v in df[df[2] == "投手"].values])
+    text2 = "\n".join([f"{v[2]}  {v[-2]:>5d}kg {v[-1]}\n" for v in df[df[2] != "投手"].values])
+    text = text0 + f"===== 投手 =====\n" + text1 + f"\n\n===== 野手 =====\n" + text2
+
+    # sheet
+    results = [list(v) for v in df.values]
+    return results, text
+
+
+def reoS(session, ymd_reo, href_number):
     # reoBStatusへ移動
     href_reoS = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=status&transaction_status=900"
     soup = session.get(session, href_reoS)
@@ -124,10 +146,10 @@ def reoStatus(session, ymd_reo, href_number):
     return results
 
 
-def reo_download(session, ymd_reo, href_number, category, remarks_col, remarks_value):
+def _reo_table_download(session, ymd_reo, href_number, category, remarks_col, remarks_value):
     # reoの各ページへ移動
     href_reo = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + f"?category={category}&transaction_status=900"
-    soup = move2page(session, href_reo)
+    soup = _move2page(session, href_reo)
 
     # table
     table = soup.find('table', class_='list sticky')
@@ -142,48 +164,6 @@ def reo_download(session, ymd_reo, href_number, category, remarks_col, remarks_v
     df[-1] = "#" + df[0] + df[1].str.replace("\n", "").str.split("\u3000").str[0]
     df = df[sorted(df.columns)]
     return df
-
-
-def reoC(session, ymd_reo, href_number):
-
-    # reoCへ移動
-    href_reoC = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=training&transaction_status=900"
-    soup = move2page(session, href_reoC)
-
-    # table
-    table = soup.find('table', class_='list sticky')
-    tbody = table.find('tbody')
-
-    # データ取得
-    results = []
-    for tr in tbody.find_all('tr'):
-        # 各セルのテキストをリスト化
-        tds = tr.find_all('td')
-        remarks = tds[9].get_text(strip=True)
-        if remarks == "(-)":
-            continue
-
-        # データ取得
-        row_data = [v.text for v in tr.find_all("td")]
-        row_data[0] = "#" + row_data[0]
-        row_data[1] = row_data[1].replace("\n", "")
-        player = row_data[0] + row_data[1].split("\u3000")[0]
-
-        # 体重および体重前日比
-        weight = float(row_data[9].split("\n")[1].replace(" ", "")[:-2])
-        weight_comp = row_data[9].split("\n")[3].replace(" ", "")
-        weight_info = f"{str(weight):>5}kg {weight_comp}"
-
-        # 出力
-        row_data = [ymd_reo, href_number, player] + row_data + [weight_info]
-        results.append(row_data)
-        print(len(row_data), player, weight_info)
-
-    # テキスト変換
-    text_viber_list = [f"{v[2]} {v[-1]}" for v in results]
-    text_viber = ymd_reo + " C欄 体重\n\n" + "\n\n".join(text_viber_list)
-
-    return results, text_viber
 
 
 def send_to_viber(message_text):
@@ -208,8 +188,8 @@ def upload2sheet(gc, ERROR_MESSAGE, sheet_name, list, text, info_number):
 
     # record
     ERROR_MESSAGE[info_number] = len(list)
-    ERROR_MESSAGE[info_number+1] = res["status"]
-    ERROR_MESSAGE[info_number+2] = res["status_message"]
+    ERROR_MESSAGE[info_number + 1] = res["status"]
+    ERROR_MESSAGE[info_number + 2] = res["status_message"]
 
     return ERROR_MESSAGE
 
@@ -225,26 +205,17 @@ def main():
     ERROR_MESSAGE = [dt_now, "-", "-", "-", "-", "-", "-"]
 
     # reo認証
-    session = login_and_get_session(session)
-    ymd_reo, href_number = go2condition(session)
+    session, ymd_reo, href_number = login_and_get_session(session)
 
     # reo取得
-    df_B = reo_download(session, ymd_reo, href_number, category="mt", remarks_col=7, remarks_value='')
-    reoB_results, reoB_viber = reoB(df_B, ymd_reo)
-    
-
-
-    # reo_download(session, ymd_reo, href_number, category="training", remarks_col=9, remarks_value='\n\n          (-)\n        \n')
-
-    # reoB_results, reoB_viber = reoB(session, ymd_reo, href_number)
-    # reoC_results, reoC_viber = reoC(session, ymd_reo, href_number)
-
+    reoB_results, reoB_viber = reoB(session, ymd_reo, href_number, category="mt", remarks_col=7, remarks_value='')
+    reoC_results, reoC_viber = reoC(session, ymd_reo, href_number, category="training", remarks_col=9, remarks_value='\n\n          (-)\n        \n')
 
     # スプレッドシートの呼び出し
     creds_dict = json.loads(os.environ['GSPREAD_JSON'])
     gc = gspread.service_account_from_dict(creds_dict)
     ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoB", list=reoB_results, text=reoB_viber, info_number=1)
-    # ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoC", list=reoC_results, text=reoC_viber, info_number=4)
+    ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoC", list=reoC_results, text=reoC_viber, info_number=4)
 
     # 記録の登録
     ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
