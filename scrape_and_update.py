@@ -109,7 +109,7 @@ def reoB_past(session, ymd_reo, href_number):
     return results, text_viber
 
 
-def reoB(df):
+def reoB(df, ymd_reo):
     # SOAP
     temp = df.iloc[:, -3].str.split("\r\n")
     df["S"] = temp.str[0]
@@ -273,7 +273,7 @@ def main():
 
     # reo取得
     df_B = reo_download(session, ymd_reo, href_number, category="mt", remarks_col=7, remarks_value='')
-    reoB_results, reoB_viber = reoB(df_B)
+    reoB_results, reoB_viber = reoB(df_B, ymd_reo)
     
 
 
