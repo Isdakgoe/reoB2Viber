@@ -66,49 +66,6 @@ def go2condition(session):
         return ["", ""]
 
 
-def reoB_past(session, ymd_reo, href_number):
-    # reoBへ移動
-    href_reoB = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=mt&transaction_status=900"
-    soup = move2page(session, href_reoB)
-
-    # table
-    table = soup.find('table', class_='list sticky')
-    tbody = table.find('tbody')
-
-    # データ取得
-    results = []
-    for tr in tbody.find_all('tr'):
-        # 各セルのテキストをリスト化
-        tds = tr.find_all('td')
-        remarks = tds[-3].get_text(strip=True)
-        if remarks == "":
-            continue
-
-        # データ取得
-        row_data = [v.text for v in tr.find_all("td")]
-        row_data[0] = "#" + row_data[0]
-        row_data[1] = row_data[1].replace("\n", "")
-        player = row_data[0] + row_data[1].split("\u3000")[0]
-
-        # SOAP
-        temp = row_data[-3].split("\r\n")
-        S, O, W = [temp[0], temp[-2] if len(temp) > 1 else "", temp[-1]]
-
-        # 出力
-        row_data = [ymd_reo, href_number, player] + row_data + [S, O, W]
-        results.append(row_data)
-        print(len(row_data), row_data)
-
-    # テキスト変換
-    text_viber_list = [(f"{v[2]}  {v[6]}  {v[15]}\n"
-                        f"\s\s\s{v[13]}\n"
-                        f"\s\s\s\s{v[14]}\n"
-                        ) for v in results]
-    text_viber = ymd_reo + " B欄\n\n" + "\n\n".join(text_viber_list)
-
-    return results, text_viber
-
-
 def reoB(df, ymd_reo):
     # SOAP
     temp = df.iloc[:, -3].str.split("\r\n")
@@ -117,10 +74,10 @@ def reoB(df, ymd_reo):
     df["W"] = temp.str[-1]
 
     # viber
-    text0 = ymd_reo + "B欄\n\n"
-    text1 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n{v[13]}\n{v[14]}\n" for v in df[df[2] == "投手"].values])
+    text0 = ymd_reo + " B欄\n"
+    text1 = "\n\n■ ".join([f"{v[2]}  {v[6]}  {v[15]}\n{v[13]}\n{v[14]}\n" for v in df[df[2] == "投手"].values])
     text2 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n{v[13]}\n{v[14]}\n" for v in df[df[2] != "投手"].values])
-    text = text0 + f"■ 投手  {len(text1)}\n" + text1 + f"■ 野手  {len(text2)}\n"
+    text = text0 + f"< 投手 >\n■ " + text1 + f"< 野手 >\n■" + text2
     
     # sheet
     results = [list(v) for v in df.values]
