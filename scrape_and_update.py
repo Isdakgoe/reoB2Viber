@@ -1,12 +1,19 @@
-# main.py
 import os, json, requests
 from bs4 import BeautifulSoup
 import gspread
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 import re
-from oauth2client.service_account import ServiceAccountCredentials
+import datetime
+import requests
 
-# 環境変数はGitHub ActionsのSecretsにて設定される前提
+# os.environ["LOGIN_URL"] = "https://reo-system.com/users/sign_in"
+# os.environ["LOGIN_USER"] = "t.kawagoe"
+# os.environ["LOGIN_PASS"] = "t.kawagoe"
+# os.environ["LOGIN_SUCCESS_URL"] = "https://reo-system.com/sys/dashboard_royal/728"
+# os.environ["WEB_BASE"] = "https://reo-system.com/"
+# os.environ["VIBER_AUTH_TOKEN"] = "55100e787c3944db-f25c732dbf670093-5785efa67ab2b224"
+# os.environ["VIBER_USER_ID"] = "eFRfZGOoL61kwaQjMC4eAQ=="
+
 
 def move2page(session, url):
     page = session.get(url)
@@ -14,56 +21,137 @@ def move2page(session, url):
     soup = BeautifulSoup(page.text, 'html.parser')
     return soup
 
+
 def login_and_get_session(session):
+    # (1) ログインページ取得 → authenticity_token 抜き出し
     soup = move2page(session, os.environ['LOGIN_URL'])
     auth_token = soup.select_one('input[name="authenticity_token"]')['value']
 
+    # (3) ヘッダーを含めて POST
     payload = {
         'user[login]': os.environ['LOGIN_USER'],
         'user[password]': os.environ['LOGIN_PASS'],
         'authenticity_token': auth_token,
-        'utf8': '✓',
-        'commit': 'Log in',
-        'user[remember_me]': '0',
+        'utf8': '✓',  # Rails form だと hidden で入ってることが多い
+        'commit': 'Log in',  # ボタンの value に合わせる
+        "user[remember_me]": "0",  # hidden フィールド
     }
     headers = {
         'User-Agent': 'Mozilla/5.0',
-        'Referer': os.environ['LOGIN_URL']
+        'Referer': os.environ['LOGIN_URL']  # 直前に GET したページを Referer に
     }
-    resp = session.post(os.environ['LOGIN_URL'], data=payload, headers=headers)
+    resp = session.post(os.environ['LOGIN_URL'], data=payload, headers=headers, allow_redirects=True)
     resp.raise_for_status()
 
-    if os.environ['LOGIN_SUCCESS_URL'] not in resp.url:
-        raise RuntimeError("Login succeeded but landed on wrong page")
+    # (4) リダイレクト履歴と最終 URL を確認
+    print("Redirect history:")
+    for h in resp.history:
+        print("  ", h.status_code, h.headers.get('Location'))
+
+    # (5) 成功判定の強化
+    expected_after_login = os.environ.get('LOGIN_SUCCESS_URL')
+    if expected_after_login and expected_after_login not in resp.url:
+        raise RuntimeError(f"Login succeeded (200) but did not land on expected page: {resp.url}")
 
     return session
 
+
 def go2condition(session):
+    # 該当のreoB URLを取得
     soup = move2page(session, os.environ['LOGIN_SUCCESS_URL'])
+
+    # CSS セレクタで直接 a タグを取得
     a_tag = soup.select_one('.conditioning_input_status .conditioning_report_on a')
     if a_tag and a_tag.has_attr('href'):
         ymd_reo = a_tag.text
-        href_number = a_tag['href'].split("?")[0].split("/")[-1]
+        href_number = a_tag['href'].split("?")[0].split("/")[-1]  # => /pcm/conditioning_report/4667?transaction_status=900
         return [True, ymd_reo, href_number]
-    return [False, '', '']
+    else:
+        print("リンクが見つかりませんでした")
+        return [False, "", ""]
+
 
 def reoB(session, ymd_reo, href_number):
-    href = f"{os.environ['WEB_BASE']}pcm/conditioning_report/{href_number}?category=mt&transaction_status=900"
-    soup = move2page(session, href)
-    tbody = soup.find('table', class_='list sticky').find('tbody')
+    # reoBStatusへ移動
+    href_reoB = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=mt&transaction_status=900"
+    soup = move2page(session, href_reoB)
 
+    # table
+    table = soup.find('table', class_='list sticky')
+    tbody = table.find('tbody')
+
+    # データ取得
     results = []
     for tr in tbody.find_all('tr'):
+        # 各セルのテキストをリスト化
         tds = tr.find_all('td')
         remarks = tds[-3].get_text(strip=True)
-        if not remarks:
+        if remarks == "":
             continue
-        row_data = [v.text.replace('\n', '') for v in tds]
-        row_data[2] = '#' + row_data[2]
+
+        # データ取得
+        row_data = [v.text for v in tr.find_all("td")]
+        row_data[0] = "#" + row_data[0]
+        row_data[1] = row_data[1].replace("\n", "")
+
+        # SOAP
         temp = row_data[-3].split("\r\n")
-        S, O, W = [temp[0], temp[-2] if len(temp) > 1 else '', temp[-1]]
-        results.append([ymd_reo, href_number] + row_data + [S, O, W])
+        S, O, W = [temp[0], temp[-2] if len(temp) > 1 else "", temp[-1]]
+
+        # 出力
+        row_data = [ymd_reo, href_number] + row_data + [S, O, W]
+        results.append(row_data)
+        print(len(row_data), row_data)
+
+    # テキスト変換
+    text_viber_list = [(f"{v[2]} {v[3]} {v[5]}\n"
+                        f"  {v[12]}\n"
+                        f"  {v[13]}\n"
+                        f"  {v[14]}\n"
+                        ) for v in results]
+    text_viber = ymd_reo + " B欄\n\n" + "\n\n".join(text_viber_list)
+
+    return results, text_viber
+
+
+def reoStatus(session, ymd_reo, href_number):
+    # reoBStatusへ移動
+    href_reoS = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=status&transaction_status=900"
+    soup = session.get(session, href_reoS)
+
+    # table
+    table = soup.find('table', class_='list sticky')
+    tbody = table.find('tbody')
+
+    # 当日の日付が入力されているかの確認
+    m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in ymd_reo.split("/")[1:]]
+    pattern = re.compile(rf'{m}/{d}|{m}月{d}日')
+
+    # データ取得
+    results = []
+    for tr in tbody.find_all('tr'):
+        # JSTとUTCの差分
+        DIFF_JST_FROM_UTC = 9
+        dt_now = datetime.datetime.utcnow() + datetime.timedelta(hours=DIFF_JST_FROM_UTC)
+        dt_now = dt_now.strftime('%Y/%m/%d %H:%M:%S')
+
+        # 各セルのテキストをリスト化
+        tds = tr.find_all('td')
+        remarks = tds[-2].get_text(strip=True)
+        if not pattern.search(remarks):
+            continue
+
+        row_data = [v.text for v in tr.find_all("td")]
+        row_data[1] = row_data[1].replace("\n", "")
+        row_data[7] = row_data[7].replace("\n\t\t\t\t\t", "").replace("\n\t\t\t", "")
+        if tr.find('span', class_='change_10'):
+            row_data[4] = "*"
+        row_data = [dt_now, ymd_reo, href_number] + row_data
+        results.append(row_data[:-1])
+        print(row_data)
+
     return results
+
 
 def send_to_viber(message_text):
     data = {
@@ -76,41 +164,52 @@ def send_to_viber(message_text):
     print(res.json())
     return res.json()
 
+
 def main():
-    dt_now = (datetime.utcnow() + timedelta(hours=9)).strftime('%Y/%m/%d %H:%M:%S')
+    # 作動時刻
+    DIFF_JST_FROM_UTC = 9
+    dt_now = datetime.datetime.utcnow() + datetime.timedelta(hours=DIFF_JST_FROM_UTC)
+    dt_now = dt_now.strftime('%Y/%m/%d %H:%M:%S')
+
+    # start session
     session = requests.Session()
-    ERROR_MESSAGE = [dt_now, '-', '-', '-', '-']
+    ERROR_MESSAGE = [dt_now, "-", "-", "-", "-"]
 
-    # try:
-    session = login_and_get_session(session)
-    CHECK, ymd_reo, href_number = go2condition(session)
-    if not CHECK:
-        ERROR_MESSAGE[1] = "N"
-    else:
-        results = reoB(session, ymd_reo, href_number)
-        if not results:
+    try:
+        # reo認証
+        session = login_and_get_session(session)
+
+        # コンディショニング欄へ
+        CHECK, ymd_reo, href_number = go2condition(session)
+
+        # reo: B
+        results, text_viber = reoB(session, ymd_reo, href_number)
+        if len(results) == 0:
             ERROR_MESSAGE[1] = "D"
-        else:
-            creds_dict = json.loads(os.environ['GSPREAD_JSON'])
-            scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-            credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-            gc = gspread.authorize(credentials)
 
+        else:
+            # スプレッドシートの呼び出し
+            creds_dict = json.loads(os.environ['GSPREAD_JSON'])
+            gc = gspread.service_account_from_dict(creds_dict)
+
+            # スプレッドシートに登録
             ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("reoB")
             ws.append_rows(results)
             ERROR_MESSAGE[1] = "O"
 
-            res = send_to_viber(message_text=f"[reoB通知] {len(results)}件追加されました")
+            # viberに通知
+            res = send_to_viber(message_text=text_viber)
             ERROR_MESSAGE[2] = "O"
-            ERROR_MESSAGE[3] = res.get("status", "")
-            ERROR_MESSAGE[4] = res.get("status_message", "")
+            ERROR_MESSAGE[3] = res["status"]
+            ERROR_MESSAGE[4] = res["status_message"]
 
-    # except Exception as e:
-    #     print(f"ERROR: {e}")
+    except:
+        print(f"    {dt_now}: ERROR")
 
-    # 記録
+    # 記録の登録
     ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
     ws.append_rows([ERROR_MESSAGE])
+
 
 if __name__ == "__main__":
     main()
