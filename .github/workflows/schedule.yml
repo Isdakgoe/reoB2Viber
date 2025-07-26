@@ -35,6 +35,8 @@ jobs:
           LOGIN_PASS: ${{ secrets.LOGIN_PASS }}
           LOGIN_SUCCESS_URL: ${{ secrets.LOGIN_SUCCESS_URL }}
           WEB_BASE: ${{ secrets.WEB_BASE }}
+          VIBER_AUTH_TOKEN: ${{ secrets.VIBER_AUTH_TOKEN }}
+          VIBER_USER_ID: ${{ secrets.VIBER_USER_ID }}
 
         run: |
           python scrape_and_update.py
