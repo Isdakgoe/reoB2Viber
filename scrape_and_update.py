@@ -107,45 +107,6 @@ def reoC(session, ymd_reo, href_number, category, remarks_col, remarks_value):
     return results, text
 
 
-def reoS(session, ymd_reo, href_number):
-    # reoBStatusへ移動
-    href_reoS = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=status&transaction_status=900"
-    soup = session.get(session, href_reoS)
-
-    # table
-    table = soup.find('table', class_='list sticky')
-    tbody = table.find('tbody')
-
-    # 当日の日付が入力されているかの確認
-    m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in ymd_reo.split("/")[1:]]
-    pattern = re.compile(rf'{m}/{d}|{m}月{d}日')
-
-    # データ取得
-    results = []
-    for tr in tbody.find_all('tr'):
-        # JSTとUTCの差分
-        DIFF_JST_FROM_UTC = 9
-        dt_now = datetime.datetime.utcnow() + datetime.timedelta(hours=DIFF_JST_FROM_UTC)
-        dt_now = dt_now.strftime('%Y/%m/%d %H:%M:%S')
-
-        # 各セルのテキストをリスト化
-        tds = tr.find_all('td')
-        remarks = tds[-2].get_text(strip=True)
-        if not pattern.search(remarks):
-            continue
-
-        row_data = [v.text for v in tr.find_all("td")]
-        row_data[1] = row_data[1].replace("\n", "")
-        row_data[7] = row_data[7].replace("\n\t\t\t\t\t", "").replace("\n\t\t\t", "")
-        if tr.find('span', class_='change_10'):
-            row_data[4] = "*"
-        row_data = [dt_now, ymd_reo, href_number] + row_data
-        results.append(row_data[:-1])
-        print(row_data)
-
-    return results
-
-
 def _reo_table_download(session, ymd_reo, href_number, category, remarks_col, remarks_value):
     # reoの各ページへ移動
     href_reo = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + f"?category={category}&transaction_status=900"
@@ -215,7 +176,7 @@ def main():
     creds_dict = json.loads(os.environ['GSPREAD_JSON'])
     gc = gspread.service_account_from_dict(creds_dict)
     ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoB", list=reoB_results, text=reoB_viber, info_number=1)
-    ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoC", list=reoC_results, text=reoC_viber, info_number=4)
+    ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoC", list=reoC_results, text="text", info_number=4)
 
     # 記録の登録
     ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
