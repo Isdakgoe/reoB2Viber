@@ -238,7 +238,8 @@ def main():
 
     # reoC
     reoC_results, reoC_viber = reoC(session, ymd_reo, href_number)
-    ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoC", list=reoC_results, text=reoC_viber, info_number=4)
+    
+
 
     # 記録の登録
     ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
