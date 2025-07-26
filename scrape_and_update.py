@@ -81,32 +81,32 @@ def main():
     session = requests.Session()
     ERROR_MESSAGE = [dt_now, '-', '-', '-', '-']
 
-    try:
-        session = login_and_get_session(session)
-        CHECK, ymd_reo, href_number = go2condition(session)
-        if not CHECK:
-            ERROR_MESSAGE[1] = "N"
+    # try:
+    session = login_and_get_session(session)
+    CHECK, ymd_reo, href_number = go2condition(session)
+    if not CHECK:
+        ERROR_MESSAGE[1] = "N"
+    else:
+        results = reoB(session, ymd_reo, href_number)
+        if not results:
+            ERROR_MESSAGE[1] = "D"
         else:
-            results = reoB(session, ymd_reo, href_number)
-            if not results:
-                ERROR_MESSAGE[1] = "D"
-            else:
-                creds_dict = json.loads(os.environ['GSPREAD_JSON'])
-                scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-                credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-                gc = gspread.authorize(credentials)
+            creds_dict = json.loads(os.environ['GSPREAD_JSON'])
+            scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+            credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+            gc = gspread.authorize(credentials)
 
-                ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("reoB")
-                ws.append_rows(results)
-                ERROR_MESSAGE[1] = "O"
+            ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("reoB")
+            ws.append_rows(results)
+            ERROR_MESSAGE[1] = "O"
 
-                res = send_to_viber(message_text=f"[reoB通知] {len(results)}件追加されました")
-                ERROR_MESSAGE[2] = "O"
-                ERROR_MESSAGE[3] = res.get("status", "")
-                ERROR_MESSAGE[4] = res.get("status_message", "")
+            res = send_to_viber(message_text=f"[reoB通知] {len(results)}件追加されました")
+            ERROR_MESSAGE[2] = "O"
+            ERROR_MESSAGE[3] = res.get("status", "")
+            ERROR_MESSAGE[4] = res.get("status_message", "")
 
-    except Exception as e:
-        print(f"ERROR: {e}")
+    # except Exception as e:
+    #     print(f"ERROR: {e}")
 
     # 記録
     ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
