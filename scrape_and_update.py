@@ -76,7 +76,7 @@ def reoB(df, ymd_reo):
     # viber
     text0 = ymd_reo + " B欄\n"
     text1 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] == "投手"].values])
-    text2 = "\n\n■".join([f"{v[2]}  {v[6]}  {v[15]}\n{v[13]}\n{v[14]}\n" for v in df[df[2] != "投手"].values])
+    text2 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] != "投手"].values])
     text = text0 + f"===== 投手 =====\n" + text1 + f"\n\n===== 野手 =====\n" + text2
     
     # sheet
