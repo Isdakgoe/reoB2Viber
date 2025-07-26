@@ -93,7 +93,7 @@ def reoC(session, ymd_reo, href_number, category, remarks_col, remarks_value):
     df = _reo_table_download(session, ymd_reo, href_number, category, remarks_col, remarks_value)
 
     # 体重および体重前日比
-    df["weight"] = df[9].str.split("\n").str[1].str.replace(" ", "").str[:-2].astype(float)
+    df["weight"] = df[9].str.split("\n").str[1].str.replace(" ", "").str[:-2]
     df["weight_comp"] = df[9].str.split("\n").str[3].str.replace(" ", "")
 
     # viber
