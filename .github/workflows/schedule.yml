@@ -2,9 +2,9 @@
 name: Daily Scrape & Update
 
 on:
-  # 毎朝 8:00 JST → UTC 前日 23:00 にスケジュール実行
   schedule:
-    - cron: '0 23 * * *'
+    - cron: '50 22 * * *'
+    
   # 手動実行ボタン
   workflow_dispatch:
 
