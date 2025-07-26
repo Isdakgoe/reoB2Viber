@@ -98,8 +98,8 @@ def reoB(session, ymd_reo, href_number):
 
     # テキスト変換
     text_viber_list = [(f"{v[2]}  {v[6]}  {v[15]}\n"
-                        f"\s\s\s{v[13]}\n"
-                        f"\s\s\s\s{v[14]}\n"
+                        f"{v[13]}\n"
+                        f" {v[14]}\n"
                         ) for v in results]
     text_viber = ymd_reo + " B欄\n\n" + "\n\n".join(text_viber_list)
 
@@ -181,7 +181,7 @@ def reoC(session, ymd_reo, href_number):
 
     # テキスト変換
     text_viber_list = [f"{v[2]} {v[-1]}" for v in results]
-    text_viber = ymd_reo + " C欄 体重\n\n" + "\n\n".join(text_viber_list)
+    text_viber = ymd_reo + " C欄 体重\n\n" + "\n".join(text_viber_list)
 
     return results, text_viber
 
