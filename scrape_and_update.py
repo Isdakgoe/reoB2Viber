@@ -234,7 +234,7 @@ def main():
 
     # start session
     session = requests.Session()
-    ERROR_MESSAGE = [dt_now, "-", "-", "-", "-"]
+    ERROR_MESSAGE = [dt_now, "-", "-", "-", "-", "-", "-", "-", "-"]
 
     # reo認証
     session = login_and_get_session(session)
