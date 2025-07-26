@@ -1,10 +1,13 @@
+
 import os, json, requests
+import pandas as pd
 from bs4 import BeautifulSoup
 import gspread
 from datetime import datetime, timezone, timedelta
 import re
 import datetime
 import requests
+
 
 
 def move2page(session, url):
@@ -63,7 +66,7 @@ def go2condition(session):
         return ["", ""]
 
 
-def reoB(session, ymd_reo, href_number):
+def reoB_past(session, ymd_reo, href_number):
     # reoBへ移動
     href_reoB = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=mt&transaction_status=900"
     soup = move2page(session, href_reoB)
@@ -98,13 +101,32 @@ def reoB(session, ymd_reo, href_number):
 
     # テキスト変換
     text_viber_list = [(f"{v[2]}  {v[6]}  {v[15]}\n"
-                        f"{v[13]}\n"
-                        f"{v[14]}\n"
+                        f"\s\s\s{v[13]}\n"
+                        f"\s\s\s\s{v[14]}\n"
                         ) for v in results]
     text_viber = ymd_reo + " B欄\n\n" + "\n\n".join(text_viber_list)
 
     return results, text_viber
 
+
+def reoB(df):
+    # SOAP
+    temp = df.iloc[:, -3].str.split("\r\n")
+    df["S"] = temp.str[0]
+    df["O"] = temp.str[-2]
+    df["W"] = temp.str[-1]
+
+    # viber
+    text0 = ymd_reo + "B欄\n\n"
+    text1 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n{v[13]}\n{v[14]}\n" for v in df[df[2] == "投手"].values])
+    text2 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n{v[13]}\n{v[14]}\n" for v in df[df[2] != "投手"].values])
+    text = text0 + f"■ 投手  {len(text1)}\n" + text1 + f"■ 野手  {len(text2)}\n"
+    
+    # sheet
+    results = [list(v) for v in df.values]
+
+    return results, text
+    
 
 def reoStatus(session, ymd_reo, href_number):
     # reoBStatusへ移動
@@ -145,7 +167,28 @@ def reoStatus(session, ymd_reo, href_number):
     return results
 
 
+def reo_download(session, ymd_reo, href_number, category, remarks_col, remarks_value):
+    # reoの各ページへ移動
+    href_reo = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + f"?category={category}&transaction_status=900"
+    soup = move2page(session, href_reo)
+
+    # table
+    table = soup.find('table', class_='list sticky')
+    tbody = table.find('tbody')
+    results = [[v.text for v in tr.find_all('td')] for tr in tbody.find_all('tr')]
+
+    # DataFrame
+    df = pd.DataFrame(results)
+    df = df[df[remarks_col] != remarks_value].copy()
+    df[-3] = ymd_reo
+    df[-2] = href_number
+    df[-1] = "#" + df[0] + df[1].str.replace("\n", "").str.split("\u3000").str[0]
+    df = df[sorted(df.columns)]
+    return df
+
+
 def reoC(session, ymd_reo, href_number):
+
     # reoCへ移動
     href_reoC = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=training&transaction_status=900"
     soup = move2page(session, href_reoC)
@@ -181,7 +224,7 @@ def reoC(session, ymd_reo, href_number):
 
     # テキスト変換
     text_viber_list = [f"{v[2]} {v[-1]}" for v in results]
-    text_viber = ymd_reo + " C欄 体重\n\n" + "\n".join(text_viber_list)
+    text_viber = ymd_reo + " C欄 体重\n\n" + "\n\n".join(text_viber_list)
 
     return results, text_viber
 
@@ -202,7 +245,7 @@ def upload2sheet(gc, ERROR_MESSAGE, sheet_name, list, text, info_number):
     # sheet
     ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet(sheet_name)
     ws.append_rows(list)
-    
+
     # viber
     res = send_to_viber(message_text=text)
 
@@ -210,7 +253,7 @@ def upload2sheet(gc, ERROR_MESSAGE, sheet_name, list, text, info_number):
     ERROR_MESSAGE[info_number] = len(list)
     ERROR_MESSAGE[info_number+1] = res["status"]
     ERROR_MESSAGE[info_number+2] = res["status_message"]
-    
+
     return ERROR_MESSAGE
 
 
@@ -220,10 +263,6 @@ def main():
     dt_now = datetime.datetime.utcnow() + datetime.timedelta(hours=DIFF_JST_FROM_UTC)
     dt_now = dt_now.strftime('%Y/%m/%d %H:%M:%S')
 
-    # スプレッドシートの呼び出し
-    creds_dict = json.loads(os.environ['GSPREAD_JSON'])
-    gc = gspread.service_account_from_dict(creds_dict)
-
     # start session
     session = requests.Session()
     ERROR_MESSAGE = [dt_now, "-", "-", "-", "-", "-", "-"]
@@ -232,15 +271,23 @@ def main():
     session = login_and_get_session(session)
     ymd_reo, href_number = go2condition(session)
 
-    # reoB
-    reoB_results, reoB_viber = reoB(session, ymd_reo, href_number)
+    # reo取得
+    df_B = reo_download(session, ymd_reo, href_number, category="mt", remarks_col=7, remarks_value='')
+    reoB_results, reoB_viber = reoB(df_B)
+    
+
+
+    # reo_download(session, ymd_reo, href_number, category="training", remarks_col=9, remarks_value='\n\n          (-)\n        \n')
+
+    # reoB_results, reoB_viber = reoB(session, ymd_reo, href_number)
+    # reoC_results, reoC_viber = reoC(session, ymd_reo, href_number)
+
+
+    # スプレッドシートの呼び出し
+    creds_dict = json.loads(os.environ['GSPREAD_JSON'])
+    gc = gspread.service_account_from_dict(creds_dict)
     ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoB", list=reoB_results, text=reoB_viber, info_number=1)
-
-    # reoC
-    reoC_results, reoC_viber = reoC(session, ymd_reo, href_number)
-    ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoC", list=reoC_results, text=reoC_viber, info_number=4)
-
-
+    # ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoC", list=reoC_results, text=reoC_viber, info_number=4)
 
     # 記録の登録
     ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
