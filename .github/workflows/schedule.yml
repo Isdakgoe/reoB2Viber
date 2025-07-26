@@ -1,3 +1,4 @@
+# .github/workflows/daily_scrape.yml
 name: Daily Scrape & Update
 
 on:
@@ -43,4 +44,3 @@ jobs:
           echo "----BEGIN PRIVATE_KEY SNIPPET----"
           echo "${{ secrets.GSPREAD_JSON }}" | head -n5
           echo "----END SNIPPET----"
-
