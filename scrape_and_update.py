@@ -105,12 +105,12 @@ def main():
                 ERROR_MESSAGE[3] = res.get("status", "")
                 ERROR_MESSAGE[4] = res.get("status_message", "")
 
-                # 記録
-                ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
-                ws.append_rows([ERROR_MESSAGE])
-
     except Exception as e:
         print(f"ERROR: {e}")
+
+    # 記録
+    ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
+    ws.append_rows([ERROR_MESSAGE])
 
 if __name__ == "__main__":
     main()
