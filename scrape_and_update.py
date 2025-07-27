@@ -64,7 +64,7 @@ def reoB(session, ymd_reo, href_number, category, remarks_col, remarks_value):
     
     # SOAP
     temp = df.iloc[:, -3].str.split("\r\n")
-    df["S"] = temp.str[0]
+    df["S"] = temp.str[1]
     df["O"] = temp.str[-2]
     df["W"] = temp.str[-1]
 
