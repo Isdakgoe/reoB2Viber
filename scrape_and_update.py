@@ -69,9 +69,9 @@ def reoB(session, ymd_reo, href_number, category, remarks_col, remarks_value):
     df["W"] = temp.str[-1]
 
     # viber
-    text0 = ymd_reo + " B欄\n"
-    text1 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] == "投手"].values])
-    text2 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] != "投手"].values])
+    text0 = ymd_reo + " B欄\n\n"
+    text1 = "\n\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] == "投手"].values])
+    text2 = "\n\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] != "投手"].values])
     text = text0 + f"===== 投手 =====\n" + text1 + f"\n\n===== 野手 =====\n" + text2
 
     # sheet
@@ -89,7 +89,7 @@ def reoC(session, ymd_reo, href_number, category, remarks_col, remarks_value):
     df["weight_comp"] = df[9].str.split("\n").str[3].str.replace(" ", "")
 
     # viber
-    text0 = ymd_reo + " C欄 体重\n"
+    text0 = ymd_reo + " C欄 体重\n\n"
     text1 = "\n".join([f"{v[2]}  {v[-2]:>5}kg {v[-1]}\n" for v in df[df[2] == "投手"].values])
     text2 = "\n".join([f"{v[2]}  {v[-2]:>5}kg {v[-1]}\n" for v in df[df[2] != "投手"].values])
     text = text0 + f"===== 投手 =====\n" + text1 + f"\n\n===== 野手 =====\n" + text2
