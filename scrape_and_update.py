@@ -168,7 +168,7 @@ def main():
     creds_dict = json.loads(os.environ['GSPREAD_JSON'])
     gc = gspread.service_account_from_dict(creds_dict)
     ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoB", list=reoB_results, text=reoB_viber, info_number=1)
-    ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoC", list=reoC_results, text="text", info_number=4)
+    ERROR_MESSAGE = upload2sheet(gc, ERROR_MESSAGE, sheet_name="reoC", list=reoC_results, text=reoC_viber, info_number=4)
 
     # 記録の登録
     ws = gc.open_by_key(os.environ['SHEET_ID']).worksheet("record")
