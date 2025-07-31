@@ -143,8 +143,8 @@ def reoC(session, ymd_reo, href_number, category, remarks_col, remarks_value):
 
     # viber
     text0 = ymd_reo + " C欄 体重\n"
-    text1 = "\n".join([f"{v[2]}  {v[-2]:>5d}kg {v[-1]}\n" for v in df[df[2] == "投手"].values])
-    text2 = "\n".join([f"{v[2]}  {v[-2]:>5d}kg {v[-1]}\n" for v in df[df[2] != "投手"].values])
+    text1 = "\n".join([f"{v[2]}  {v[-2]:.1f}kg {v[-1]}kg\n" for v in df[df[2] == "投手"].values])
+    text2 = "\n".join([f"{v[2]}  {v[-2]:.1f}kg {v[-1]}kg\n" for v in df[df[2] != "投手"].values])
     text = text0 + f"===== 投手 =====\n" + text1 + f"\n\n===== 野手 =====\n" + text2
 
     # sheet
