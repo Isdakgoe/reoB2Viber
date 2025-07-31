@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 import re
 import datetime
 import requests
+import re
 
 
 def login_and_get_session(session):
@@ -61,22 +62,74 @@ def _move2page(session, url):
 def reoB(session, ymd_reo, href_number, category, remarks_col, remarks_value):
     # get table
     df = _reo_table_download(session, ymd_reo, href_number, category, remarks_col, remarks_value)
-    
+
+    # test2
+    def separate2blocks(sentence):
+        # 練習前・後のブロックに分割
+        pattern = re.compile(r'(?=[①②③])')
+        blocks = pattern.split(sentence)
+        blocks = [v for v in blocks if v != ""]
+        return blocks
+
+    def text_matching(text, pattern):
+        pattern = re.compile(rf'^{pattern}:\s*(.*?)\s*$', re.MULTILINE)
+        text_match = pattern.search(text)
+        if text_match:
+            # キャプチャグループ(1)に「ー」などラベル後の文字列が入る
+            text_out = text_match.group(0).strip()
+        else:
+            text_out = "*"
+        return text_out
+
+    def text_concat(sentence):
+        blocks = separate2blocks(sentence=sentence)
+        out_list = []
+        for i_b, block in enumerate(blocks):
+            # block = "".join(block)
+            timing = block[0]
+            s_match = text_matching(block, pattern="S")
+            o_match = text_matching(block, pattern="O")
+            a_match = text_matching(block, pattern="A")
+            p_match = text_matching(block, pattern="P")
+            # w_match = re.search(r'([^\r\n]+)\s*/$', block.strip()).group(0).strip()
+            # w_match = "".join("".join(block).split("\r\n")[-2]).replace("\n", "")
+            w_match = "".join(block).split("\r\n")[-1].replace("\n", "")
+            if w_match == "":
+                w_match = "".join(block).split("\r\n")[-2].replace("\n", "")
+            out = f"{timing} {w_match}\n{s_match}\n{p_match}"
+            print(f"{out}   \n")
+            out_list += [out]
+
+        out = "\n\n".join(out_list)
+        return out
+
+    df["SPW"] = [text_concat(sentence) for sentence in df.iloc[:, -3]]
+
+    """ past code
     # SOAP
     temp = df.iloc[:, -3].str.split("\r\n")
-    df["S"] = temp.str[1]
+    df["S"] = temp.str[0]
     df["O"] = temp.str[-2]
-    df["W"] = temp.str[-1].str.replace("\n", "")
+    df["W"] = temp.str[-1]
 
     # viber
-    text0 = ymd_reo + " B欄\n\n"
-    text1 = "\n\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] == "投手"].values])
-    text2 = "\n\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] != "投手"].values])
+    text0 = ymd_reo + " B欄\n"
+    text1 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] == "投手"].values])
+    text2 = "\n\n".join([f"{v[2]}  {v[6]}  {v[15]}\n   {v[13]}\n   {v[14]}\n" for v in df[df[2] != "投手"].values])
+    text = text0 + f"===== 投手 =====\n" + text1 + f"\n\n===== 野手 =====\n" + text2
+    
+    # sheet
+    results = [list(v) for v in df.values]
+    """
+
+    # viber
+    text0 = ymd_reo + " B欄\n"
+    text1 = "\n\n".join([f"{v[2]}  {v[6]}\n{v[-1]}" for v in df[df[2] == "投手"].values])
+    text2 = "\n\n".join([f"{v[2]}  {v[6]}\n{v[-1]}" for v in df[df[2] != "投手"].values])
     text = text0 + f"===== 投手 =====\n" + text1 + f"\n\n===== 野手 =====\n" + text2
 
     # sheet
     results = [list(v) for v in df.values]
-
     return results, text
 
 
@@ -85,18 +138,57 @@ def reoC(session, ymd_reo, href_number, category, remarks_col, remarks_value):
     df = _reo_table_download(session, ymd_reo, href_number, category, remarks_col, remarks_value)
 
     # 体重および体重前日比
-    df["weight"] = df[9].str.split("\n").str[1].str.replace(" ", "").str[:-2]
+    df["weight"] = df[9].str.split("\n").str[1].str.replace(" ", "").str[:-2].astype(float)
     df["weight_comp"] = df[9].str.split("\n").str[3].str.replace(" ", "")
 
     # viber
-    text0 = ymd_reo + " C欄 体重\n\n"
-    text1 = "\n".join([f"{v[2]}  {v[-2]:>5}kg {v[-1]}" for v in df[df[2] == "投手"].values])
-    text2 = "\n".join([f"{v[2]}  {v[-2]:>5}kg {v[-1]}" for v in df[df[2] != "投手"].values])
+    text0 = ymd_reo + " C欄 体重\n"
+    text1 = "\n".join([f"{v[2]}  {v[-2]:>5d}kg {v[-1]}\n" for v in df[df[2] == "投手"].values])
+    text2 = "\n".join([f"{v[2]}  {v[-2]:>5d}kg {v[-1]}\n" for v in df[df[2] != "投手"].values])
     text = text0 + f"===== 投手 =====\n" + text1 + f"\n\n===== 野手 =====\n" + text2
 
     # sheet
     results = [list(v) for v in df.values]
     return results, text
+
+
+def reoS(session, ymd_reo, href_number):
+    # reoBStatusへ移動
+    href_reoS = os.environ["WEB_BASE"] + f"pcm/conditioning_report/{href_number}" + "?category=status&transaction_status=900"
+    soup = session.get(session, href_reoS)
+
+    # table
+    table = soup.find('table', class_='list sticky')
+    tbody = table.find('tbody')
+
+    # 当日の日付が入力されているかの確認
+    m, d = [int(re.compile(r'[0-9０-９]+').findall(v)[0]) for v in ymd_reo.split("/")[1:]]
+    pattern = re.compile(rf'{m}/{d}|{m}月{d}日')
+
+    # データ取得
+    results = []
+    for tr in tbody.find_all('tr'):
+        # JSTとUTCの差分
+        DIFF_JST_FROM_UTC = 9
+        dt_now = datetime.datetime.utcnow() + datetime.timedelta(hours=DIFF_JST_FROM_UTC)
+        dt_now = dt_now.strftime('%Y/%m/%d %H:%M:%S')
+
+        # 各セルのテキストをリスト化
+        tds = tr.find_all('td')
+        remarks = tds[-2].get_text(strip=True)
+        if not pattern.search(remarks):
+            continue
+
+        row_data = [v.text for v in tr.find_all("td")]
+        row_data[1] = row_data[1].replace("\n", "")
+        row_data[7] = row_data[7].replace("\n\t\t\t\t\t", "").replace("\n\t\t\t", "")
+        if tr.find('span', class_='change_10'):
+            row_data[4] = "*"
+        row_data = [dt_now, ymd_reo, href_number] + row_data
+        results.append(row_data[:-1])
+        print(row_data)
+
+    return results
 
 
 def _reo_table_download(session, ymd_reo, href_number, category, remarks_col, remarks_value):
@@ -161,6 +253,9 @@ def main():
     session, ymd_reo, href_number = login_and_get_session(session)
 
     # reo取得
+    category = "mt"
+    remarks_col = 7
+    remarks_value = ""
     reoB_results, reoB_viber = reoB(session, ymd_reo, href_number, category="mt", remarks_col=7, remarks_value='')
     reoC_results, reoC_viber = reoC(session, ymd_reo, href_number, category="training", remarks_col=9, remarks_value='\n\n          (-)\n        \n')
 
