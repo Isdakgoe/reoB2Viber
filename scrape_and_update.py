@@ -96,7 +96,7 @@ def reoB(session, ymd_reo, href_number, category, remarks_col, remarks_value):
             w_match = "".join(block).split("\r\n")[-1].replace("\n", "")
             if w_match == "":
                 w_match = "".join(block).split("\r\n")[-2].replace("\n", "")
-            out = f"{timing} {w_match}\n{s_match}\n{p_match}"
+            out = f"{timing} {w_match}\n{s_match}"
             print(f"{out}   \n")
             out_list += [out]
 
