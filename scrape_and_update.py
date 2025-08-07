@@ -124,8 +124,8 @@ def reoB(session, ymd_reo, href_number, category, remarks_col, remarks_value):
 
     # viber
     text0 = ymd_reo + " B欄\n"
-    text1 = "\n\n".join([f"{v[2]}  {v[6]}\n{v[-1]}" for v in df[df[2] == "投手"].values])
-    text2 = "\n\n".join([f"{v[2]}  {v[6]}\n{v[-1]}" for v in df[df[2] != "投手"].values])
+    text1 = "\n\n".join([f"■ {v[2]}  {v[6]}\n{v[-1]}" for v in df[df[2] == "投手"].values])
+    text2 = "\n\n".join([f"■ {v[2]}  {v[6]}\n{v[-1]}" for v in df[df[2] != "投手"].values])
     text = text0 + f"===== 投手 =====\n" + text1 + f"\n\n===== 野手 =====\n" + text2
 
     # sheet
